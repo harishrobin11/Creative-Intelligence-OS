@@ -1,0 +1,21 @@
+{
+  "name": "creative-intelligence-os",
+  "version": "1.0.0",
+  "description": "Agentic workspace & DAG execution engine for creative strategy",
+  "scripts": {
+    "dev:frontend": "cd frontend && export PATH=/Users/harishrobinh/.local/node/bin:$PATH && npm run dev",
+    "dev:backend": "backend/venv/bin/uvicorn backend.app.main:app --reload --port 8000",
+    "test:backend": "backend/venv/bin/pytest backend/tests",
+    "build:frontend": "cd frontend && export PATH=/Users/harishrobinh/.local/node/bin:$PATH && npm run build"
+  },
+  "keywords": [
+    "creative-strategy",
+    "dag",
+    "multi-agent",
+    "fastapi",
+    "nextjs",
+    "react-flow"
+  ],
+  "author": "Creative Intelligence OS Team",
+  "license": "MIT"
+}

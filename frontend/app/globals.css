@@ -1,0 +1,74 @@
+@import "@xyflow/react/dist/style.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas-bg: #090d16;
+  --surface-card: #111827;
+  --border-subtle: #1e293b;
+  --primary-accent: #6366f1;
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #f43f5e;
+}
+
+body {
+  background-color: var(--canvas-bg);
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  margin: 0;
+}
+
+/* Custom React Flow styling */
+.react-flow__background {
+  background-color: var(--canvas-bg) !important;
+}
+
+.react-flow__controls {
+  background: #111827 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.react-flow__controls-button {
+  background: #111827 !important;
+  border-bottom: 1px solid #1e293b !important;
+  color: #94a3b8 !important;
+  fill: #94a3b8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  fill: #f8fafc !important;
+}
+
+.react-flow__minimap {
+  background: #111827 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
