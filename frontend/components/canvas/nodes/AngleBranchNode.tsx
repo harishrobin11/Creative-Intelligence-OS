@@ -11,6 +11,7 @@ export interface AngleBranchNodeData {
   narrative_thesis: string;
   beats_count?: number;
   score?: number;
+  onSelectVariant?: (variantId: string) => void;
   [key: string]: unknown;
 }
 
@@ -24,8 +25,15 @@ export const AngleBranchNode = memo(({ data }: NodeProps) => {
   const nodeData = data as unknown as AngleBranchNodeData;
   const config = archetypeLabels[nodeData.archetype] || archetypeLabels.value_inversion;
 
+  const handleClickStoryboard = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (nodeData.onSelectVariant) {
+      nodeData.onSelectVariant(nodeData.variant_id);
+    }
+  };
+
   return (
-    <div className="w-[270px] rounded-lg bg-studio-card border border-slate-700 shadow-xl shadow-slate-950/50 p-3 font-sans text-xs overflow-hidden select-none">
+    <div className="w-[270px] rounded-lg bg-studio-card border border-slate-700 hover:border-indigo-500 shadow-xl shadow-slate-950/50 p-3 font-sans text-xs overflow-hidden select-none transition-colors">
       {/* Inbound Handle */}
       <Handle
         type="target"
@@ -51,16 +59,22 @@ export const AngleBranchNode = memo(({ data }: NodeProps) => {
         </p>
       </div>
 
-      {/* Narrative Thesis & Beats */}
+      {/* Narrative Thesis & Interactive Storyboard Button */}
       <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1.5 border-t border-slate-800/80">
-        <span className="flex items-center space-x-1">
-          <Film className="w-3 h-3 text-slate-500" />
-          <span>{nodeData.beats_count || 4} Scene Beats</span>
-        </span>
+        <button
+          type="button"
+          onClick={handleClickStoryboard}
+          className="px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-800/60 text-indigo-300 flex items-center space-x-1 transition-colors cursor-pointer"
+          title="Click to view storyboard in Experiment Lab"
+        >
+          <Film className="w-3 h-3 text-indigo-400" />
+          <span>Storyboard ({nodeData.beats_count || 4} Beats)</span>
+        </button>
+
         {nodeData.score && (
           <span className="flex items-center space-x-1 text-emerald-400">
             <CheckCircle2 className="w-3 h-3" />
-            <span>Score: {nodeData.score}</span>
+            <span>{nodeData.score}</span>
           </span>
         )}
       </div>
