@@ -12,6 +12,7 @@ export interface AngleBranchNodeData {
   beats_count?: number;
   score?: number;
   onSelectVariant?: (variantId: string) => void;
+  onOpenStoryboardModal?: (variantId: string) => void;
   [key: string]: unknown;
 }
 
@@ -27,7 +28,9 @@ export const AngleBranchNode = memo(({ data }: NodeProps) => {
 
   const handleClickStoryboard = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (nodeData.onSelectVariant) {
+    if (nodeData.onOpenStoryboardModal) {
+      nodeData.onOpenStoryboardModal(nodeData.variant_id);
+    } else if (nodeData.onSelectVariant) {
       nodeData.onSelectVariant(nodeData.variant_id);
     }
   };
@@ -64,8 +67,8 @@ export const AngleBranchNode = memo(({ data }: NodeProps) => {
         <button
           type="button"
           onClick={handleClickStoryboard}
-          className="px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-800/60 text-indigo-300 flex items-center space-x-1 transition-colors cursor-pointer"
-          title="Click to view storyboard in Experiment Lab"
+          className="nodrag nopan px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-800/60 text-indigo-300 flex items-center space-x-1 transition-colors cursor-pointer"
+          title="Click to view storyboard timeline modal"
         >
           <Film className="w-3 h-3 text-indigo-400" />
           <span>Storyboard ({nodeData.beats_count || 4} Beats)</span>

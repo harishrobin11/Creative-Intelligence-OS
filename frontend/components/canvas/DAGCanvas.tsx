@@ -20,6 +20,8 @@ import { LayoutGrid, Code } from "lucide-react";
 
 interface DAGCanvasProps {
   compiledBriefPayload?: BrandBriefPayloadClient | null;
+  onSelectVariant?: (variantId: string) => void;
+  onOpenStoryboardModal?: (variantId: string) => void;
 }
 
 const defaultInitialNodes: Node[] = [
@@ -154,7 +156,11 @@ const defaultInitialEdges: Edge[] = [
   },
 ];
 
-export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
+export function DAGCanvas({
+  compiledBriefPayload,
+  onSelectVariant,
+  onOpenStoryboardModal,
+}: DAGCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedInspectNode, setSelectedInspectNode] = useState<Node | null>(null);
@@ -174,105 +180,123 @@ export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
   );
 
   useEffect(() => {
-    if (compiledBriefPayload) {
-      const dynamicNodes: Node[] = [
-        {
-          id: "node_brief_01",
-          type: "briefNode",
-          position: { x: 0, y: 0 },
-          data: {
-            product_name: compiledBriefPayload.product_name,
-            product_url: compiledBriefPayload.product_url,
-            target_platform: compiledBriefPayload.target_platform,
-            brief_excerpt: compiledBriefPayload.raw_brief_text,
-            forbidden_terms: compiledBriefPayload.forbidden_terms,
+    const rawNodes = compiledBriefPayload
+      ? [
+          {
+            id: "node_brief_01",
+            type: "briefNode",
+            position: { x: 0, y: 0 },
+            data: {
+              product_name: compiledBriefPayload.product_name,
+              product_url: compiledBriefPayload.product_url,
+              target_platform: compiledBriefPayload.target_platform,
+              brief_excerpt: compiledBriefPayload.raw_brief_text,
+              forbidden_terms: compiledBriefPayload.forbidden_terms,
+            },
+            style: { width: 280, height: 160 },
           },
-          style: { width: 280, height: 160 },
-        },
-        {
-          id: "node_strategist_01",
-          type: "strategistNode",
-          position: { x: 0, y: 0 },
-          data: {
-            persona_name: "Synthesized ICP Persona",
-            demographic: "Target Demographic",
-            primary_anxiety: "Latent customer anxiety extracted from brief",
-            value_props: [
-              "Primary Value Proposition",
-              "Secondary Differentiator",
-            ],
-            status: "done",
+          {
+            id: "node_strategist_01",
+            type: "strategistNode",
+            position: { x: 0, y: 0 },
+            data: {
+              persona_name: "Synthesized ICP Persona",
+              demographic: "Target Demographic",
+              primary_anxiety: "Latent customer anxiety extracted from brief",
+              value_props: [
+                "Primary Value Proposition",
+                "Secondary Differentiator",
+              ],
+              status: "done",
+            },
+            style: { width: 290, height: 170 },
           },
-          style: { width: 290, height: 170 },
-        },
-        {
-          id: "node_hook_branch_a",
-          type: "angleBranchNode",
-          position: { x: 0, y: 0 },
-          data: {
-            variant_id: "VAR-A-PAIN-001",
-            archetype: "pain_agitation",
-            headline_hook: `Why ${compiledBriefPayload.product_name} changes the status quo.`,
-            narrative_thesis: "Problem agitation strategy branch.",
-            beats_count: 4,
-            score: 86.0,
+          {
+            id: "node_hook_branch_a",
+            type: "angleBranchNode",
+            position: { x: 0, y: 0 },
+            data: {
+              variant_id: "VAR-A-PAIN-001",
+              archetype: "pain_agitation",
+              headline_hook: `Why ${compiledBriefPayload.product_name} changes the status quo.`,
+              narrative_thesis: "Problem agitation strategy branch.",
+              beats_count: 4,
+              score: 86.0,
+              onSelectVariant,
+              onOpenStoryboardModal,
+            },
+            style: { width: 270, height: 140 },
           },
-          style: { width: 270, height: 140 },
-        },
-        {
-          id: "node_hook_branch_b",
-          type: "angleBranchNode",
-          position: { x: 0, y: 0 },
-          data: {
-            variant_id: "VAR-B-VALUE-INVERT-002",
-            archetype: "value_inversion",
-            headline_hook: `Stop overpaying for alternatives. Choose ${compiledBriefPayload.product_name}.`,
-            narrative_thesis: "Value inversion strategy branch.",
-            beats_count: 4,
-            score: 92.5,
+          {
+            id: "node_hook_branch_b",
+            type: "angleBranchNode",
+            position: { x: 0, y: 0 },
+            data: {
+              variant_id: "VAR-B-VALUE-INVERT-002",
+              archetype: "value_inversion",
+              headline_hook: `Stop overpaying for alternatives. Choose ${compiledBriefPayload.product_name}.`,
+              narrative_thesis: "Value inversion strategy branch.",
+              beats_count: 4,
+              score: 92.5,
+              onSelectVariant,
+              onOpenStoryboardModal,
+            },
+            style: { width: 270, height: 140 },
           },
-          style: { width: 270, height: 140 },
-        },
-        {
-          id: "node_hook_branch_c",
-          type: "angleBranchNode",
-          position: { x: 0, y: 0 },
-          data: {
-            variant_id: "VAR-C-SOCIAL-003",
-            archetype: "social_proof",
-            headline_hook: `See how users react to ${compiledBriefPayload.product_name}.`,
-            narrative_thesis: "Social proof strategy branch.",
-            beats_count: 4,
-            score: 79.0,
+          {
+            id: "node_hook_branch_c",
+            type: "angleBranchNode",
+            position: { x: 0, y: 0 },
+            data: {
+              variant_id: "VAR-C-SOCIAL-003",
+              archetype: "social_proof",
+              headline_hook: `See how users react to ${compiledBriefPayload.product_name}.`,
+              narrative_thesis: "Social proof strategy branch.",
+              beats_count: 4,
+              score: 79.0,
+              onSelectVariant,
+              onOpenStoryboardModal,
+            },
+            style: { width: 270, height: 140 },
           },
-          style: { width: 270, height: 140 },
-        },
-        {
-          id: "node_critic_02",
-          type: "brandCriticNode",
-          position: { x: 0, y: 0 },
-          data: {
-            novelty_score: 90.0,
-            clarity_score: 94.0,
-            hook_velocity_score: 95.0,
-            brand_alignment_score: 92.0,
-            composite_index: 92.5,
-            pass_audit: true,
-            critique_notes:
-              "Passed brand evaluation. Compliant with forbidden terms.",
+          {
+            id: "node_critic_02",
+            type: "brandCriticNode",
+            position: { x: 0, y: 0 },
+            data: {
+              novelty_score: 90.0,
+              clarity_score: 94.0,
+              hook_velocity_score: 95.0,
+              brand_alignment_score: 92.0,
+              composite_index: 92.5,
+              pass_audit: true,
+              critique_notes:
+                "Passed brand evaluation. Compliant with forbidden terms.",
+            },
+            style: { width: 290, height: 180 },
           },
-          style: { width: 290, height: 180 },
-        },
-      ];
+        ]
+      : defaultInitialNodes.map((n) =>
+          n.type === "angleBranchNode"
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  onSelectVariant,
+                  onOpenStoryboardModal,
+                },
+              }
+            : n
+        );
 
-      onLayout(dynamicNodes, defaultInitialEdges);
-    } else {
-      onLayout(defaultInitialNodes, defaultInitialEdges);
-    }
-  }, [compiledBriefPayload, onLayout]);
+    onLayout(rawNodes, defaultInitialEdges);
+  }, [compiledBriefPayload, onLayout, onSelectVariant, onOpenStoryboardModal]);
 
   const handleNodeClick = (_: React.MouseEvent, node: Node) => {
     setSelectedInspectNode(node);
+    if (node.type === "angleBranchNode" && node.data?.variant_id && onSelectVariant) {
+      onSelectVariant(node.data.variant_id as string);
+    }
   };
 
   return (

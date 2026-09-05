@@ -12,6 +12,8 @@ export function StudioWorkspace() {
   const [compiledPayload, setCompiledPayload] =
     useState<BrandBriefPayloadClient | null>(null);
   const [variants, setVariants] = useState<any[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>("VAR-B-VALUE-INVERT-002");
+  const [showStoryboardModal, setShowStoryboardModal] = useState<boolean>(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [totalDurationMs, setTotalDurationMs] = useState(4120);
 
@@ -24,6 +26,7 @@ export function StudioWorkspace() {
       const execRes = await executeGraphApi(payload);
       if (execRes.variants && execRes.variants.length > 0) {
         setVariants(execRes.variants);
+        setSelectedVariantId(execRes.variants[0].variant_id);
       }
       if (execRes.total_duration_ms) {
         setTotalDurationMs(execRes.total_duration_ms);
@@ -33,6 +36,19 @@ export function StudioWorkspace() {
     } finally {
       setIsExecuting(false);
     }
+  };
+
+  const handleSelectVariant = (variantId: string) => {
+    setSelectedVariantId(variantId);
+  };
+
+  const handleOpenStoryboardModal = (variantId: string) => {
+    setSelectedVariantId(variantId);
+    setShowStoryboardModal(true);
+  };
+
+  const handleCloseStoryboardModal = () => {
+    setShowStoryboardModal(false);
   };
 
   const handleVariantUpdated = (updatedVariant: any) => {
@@ -52,10 +68,18 @@ export function StudioWorkspace() {
       <Header />
       <div className="flex flex-1 overflow-hidden relative">
         <IngestionHUD onCompileGraph={handleCompileGraph} />
-        <DAGCanvas compiledBriefPayload={compiledPayload} />
+        <DAGCanvas
+          compiledBriefPayload={compiledPayload}
+          onSelectVariant={handleSelectVariant}
+          onOpenStoryboardModal={handleOpenStoryboardModal}
+        />
         <ExperimentLabHUD
           briefPayload={compiledPayload}
           variants={variants}
+          selectedVariantId={selectedVariantId}
+          onSelectVariant={handleSelectVariant}
+          showStoryboardModal={showStoryboardModal}
+          onCloseStoryboardModal={handleCloseStoryboardModal}
           onVariantUpdated={handleVariantUpdated}
         />
       </div>

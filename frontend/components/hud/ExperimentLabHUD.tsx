@@ -22,6 +22,8 @@ interface ExperimentLabHUDProps {
   selectedVariantId?: string | null;
   onSelectVariant?: (variantId: string) => void;
   onVariantUpdated?: (updatedVariant: any) => void;
+  showStoryboardModal?: boolean;
+  onCloseStoryboardModal?: () => void;
 }
 
 const defaultVariants = [
@@ -154,6 +156,8 @@ export function ExperimentLabHUD({
   selectedVariantId,
   onSelectVariant,
   onVariantUpdated,
+  showStoryboardModal: externalShowModal,
+  onCloseStoryboardModal,
 }: ExperimentLabHUDProps) {
   const activeVariants = variants && variants.length > 0 ? variants : defaultVariants;
 
@@ -161,7 +165,20 @@ export function ExperimentLabHUD({
   const [rerunningNodeId, setRerunningNodeId] = useState<string | null>(null);
   const [overridePrompts, setOverridePrompts] = useState<{ [key: string]: string }>({});
   const [showJsonModal, setShowJsonModal] = useState(false);
-  const [showStoryboardModal, setShowStoryboardModal] = useState(false);
+  const [internalShowModal, setInternalShowModal] = useState(false);
+
+  const isModalOpen = externalShowModal !== undefined ? externalShowModal : internalShowModal;
+
+  const openStoryboardModal = () => {
+    setInternalShowModal(true);
+  };
+
+  const closeStoryboardModal = () => {
+    setInternalShowModal(false);
+    if (onCloseStoryboardModal) {
+      onCloseStoryboardModal();
+    }
+  };
 
   // Sync external selectedVariantId prop
   useEffect(() => {
@@ -349,7 +366,7 @@ export function ExperimentLabHUD({
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSelectVariant(v);
-                      setShowStoryboardModal(true);
+                      openStoryboardModal();
                     }}
                     className="flex-1 py-1.5 px-2 rounded bg-indigo-950 hover:bg-indigo-900 border border-indigo-800/60 text-indigo-200 font-mono text-[10px] flex items-center justify-center space-x-1 transition-colors"
                   >
@@ -388,7 +405,7 @@ export function ExperimentLabHUD({
                 <span>Deep Storyboard Diagnostic</span>
               </span>
               <button
-                onClick={() => setShowStoryboardModal(true)}
+                onClick={openStoryboardModal}
                 className="text-[10px] font-mono text-indigo-400 hover:underline flex items-center space-x-1"
               >
                 <Eye className="w-3 h-3" />
@@ -401,7 +418,7 @@ export function ExperimentLabHUD({
               {(selectedVariant.storyboard || []).map((beat: any, idx: number) => (
                 <div
                   key={idx}
-                  onClick={() => setShowStoryboardModal(true)}
+                  onClick={openStoryboardModal}
                   className="p-2.5 rounded bg-slate-900 border border-slate-800 hover:border-indigo-500/50 cursor-pointer text-[11px] space-y-1 transition-colors"
                 >
                   <div className="flex items-center justify-between font-mono text-[10px] text-slate-400">
@@ -439,7 +456,7 @@ export function ExperimentLabHUD({
       </div>
 
       {/* Full Interactive Storyboard Timeline Modal */}
-      {showStoryboardModal && selectedVariant && (
+      {isModalOpen && selectedVariant && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-studio-card border border-studio-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
@@ -458,7 +475,7 @@ export function ExperimentLabHUD({
                 </div>
               </div>
               <button
-                onClick={() => setShowStoryboardModal(false)}
+                onClick={closeStoryboardModal}
                 className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
@@ -541,7 +558,7 @@ export function ExperimentLabHUD({
                 Total Scene Duration: {downstreamPayload.total_duration}s
               </span>
               <button
-                onClick={() => setShowStoryboardModal(false)}
+                onClick={closeStoryboardModal}
                 className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono"
               >
                 Close Storyboard
