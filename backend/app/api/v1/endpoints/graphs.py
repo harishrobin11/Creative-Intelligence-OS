@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, status, HTTPException
 from pydantic import BaseModel, Field
 
@@ -11,7 +11,7 @@ from app.schemas.contracts import (
     EvaluationVector,
 )
 from app.agents.strategist import run_strategist_agent
-from app.agents.hook_generator import run_all_hook_branches_parallel
+from app.agents.hook_generator import run_all_hook_branches_parallel, run_hook_generator_branch
 from app.agents.critic import evaluate_and_refine
 
 router = APIRouter()
@@ -29,6 +29,20 @@ class GraphExecutionResponse(BaseModel):
     strategy: StrategistOutput
     variants: List[CreativeAngleVariant]
     total_duration_ms: int
+
+
+class NodeRerunPayload(BaseModel):
+    brief: BrandBriefPayload
+    strategy: Optional[StrategistOutput] = None
+    archetype: str = Field("value_inversion", description="Target angle archetype e.g. pain_agitation, value_inversion, social_proof")
+    override_prompt: Optional[str] = Field(None, description="Optional custom revision prompt")
+
+
+class NodeRerunResponse(BaseModel):
+    node_id: str
+    variant: CreativeAngleVariant
+    status: str
+    recomputation_latency_ms: int
 
 
 @router.post(
@@ -132,4 +146,48 @@ async def execute_graph(payload: BrandBriefPayload):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Execution pipeline failed: {str(exc)}",
+        )
+
+
+@router.post(
+    "/nodes/{node_id}/rerun",
+    response_model=NodeRerunResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Selective single-node recomputation without resetting upstream Strategist state (SP-15)",
+)
+async def rerun_single_node(node_id: str, payload: NodeRerunPayload):
+    start_time = time.time()
+
+    try:
+        # Step 1: Preserve upstream Strategy or run if missing
+        strategy = payload.strategy or await run_strategist_agent(payload.brief)
+
+        archetype_val = payload.archetype
+        if archetype_val not in ["pain_agitation", "value_inversion", "social_proof"]:
+            archetype_val = "value_inversion"
+
+        # Step 2: Recompute ONLY target branch variant
+        variant = await run_hook_generator_branch(payload.brief, strategy, archetype_val) # type: ignore
+
+        # Override headline hook if custom override prompt provided
+        if payload.override_prompt and payload.override_prompt.strip():
+            variant.headline_hook = payload.override_prompt.strip()
+
+        # Step 3: Evaluate target variant through Brand Critic
+        refined_variant, eval_status = await evaluate_and_refine(
+            variant, payload.brief, strategy, max_retries=2
+        )
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        return NodeRerunResponse(
+            node_id=node_id,
+            variant=refined_variant,
+            status=eval_status,
+            recomputation_latency_ms=latency_ms,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Single-node rerun failed: {str(exc)}",
         )

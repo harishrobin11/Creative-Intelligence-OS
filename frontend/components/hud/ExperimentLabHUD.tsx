@@ -1,9 +1,190 @@
 "use client";
 
-import React from "react";
-import { BarChart3, RotateCw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
+import React, { useState } from "react";
+import {
+  BarChart3,
+  RotateCw,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  Sparkles,
+  FileCode,
+  X,
+  ChevronRight,
+  Loader2,
+  Film,
+} from "lucide-react";
+import { rerunNodeApi, BrandBriefPayloadClient } from "@/lib/api";
 
-export function ExperimentLabHUD() {
+interface ExperimentLabHUDProps {
+  briefPayload?: BrandBriefPayloadClient | null;
+  variants?: any[];
+  onVariantUpdated?: (updatedVariant: any) => void;
+}
+
+const defaultVariants = [
+  {
+    variant_id: "VAR-A-PAIN-001",
+    angle_archetype: "pain_agitation",
+    headline_hook: "Why your current fitness watch is lying about your REM recovery.",
+    narrative_thesis: "Expose hidden subscription paywalls in high-end watches.",
+    evaluation: {
+      novelty_score: 88.0,
+      clarity_score: 90.0,
+      hook_velocity_score: 84.0,
+      brand_alignment_score: 92.0,
+      composite_index: 86.4,
+      pass_audit: true,
+      critique_notes: "Passed brand audit. High agitation tension.",
+    },
+    storyboard: [
+      {
+        beat_number: 1,
+        duration_seconds: 3.0,
+        visual_description: "Macro handheld shot of runner tying shoe at dawn track.",
+        audio_voiceover: "Why your current fitness watch is lying about your REM recovery.",
+        on_screen_text: "Stop Overpaying For Recovery Data",
+      },
+      {
+        beat_number: 2,
+        duration_seconds: 4.5,
+        visual_description: "Split screen showing locked app paywall vs AuraPulse interface.",
+        audio_voiceover: "Most legacy brands charge $400 markups and lock HRV data.",
+        on_screen_text: "Zero Subscription Paywalls",
+      },
+    ],
+  },
+  {
+    variant_id: "VAR-B-VALUE-INVERT-002",
+    angle_archetype: "value_inversion",
+    headline_hook: "You don't need a $400 watch to run a sub-20 minute 5K.",
+    narrative_thesis: "Subvert luxury status symbols in collegiate athletics.",
+    evaluation: {
+      novelty_score: 88.0,
+      clarity_score: 93.0,
+      hook_velocity_score: 94.0,
+      brand_alignment_score: 92.0,
+      composite_index: 91.8,
+      pass_audit: true,
+      critique_notes: "Passed audit seamlessly. Strong tension established at 0.8s.",
+    },
+    storyboard: [
+      {
+        beat_number: 1,
+        duration_seconds: 3.2,
+        visual_description: "Cinematic 35mm handheld, cold dawn mist, runner checking wrist.",
+        audio_voiceover: "Stop spending four hundred dollars just to track your morning splits.",
+        on_screen_text: "You Don't Need A $400 Watch",
+      },
+      {
+        beat_number: 2,
+        duration_seconds: 4.0,
+        visual_description: "Dynamic track lap sprint with optical sensor close-up.",
+        audio_voiceover: "AuraPulse gives you medical-grade recovery tracking at student pricing.",
+        on_screen_text: "Medical-Grade Precision",
+      },
+    ],
+  },
+  {
+    variant_id: "VAR-C-SOCIAL-003",
+    angle_archetype: "social_proof",
+    headline_hook: "We gave 50 college athletes this smart band for finals week.",
+    narrative_thesis: "Relatable peer validation & stress recovery testing.",
+    evaluation: {
+      novelty_score: 78.0,
+      clarity_score: 88.0,
+      hook_velocity_score: 80.0,
+      brand_alignment_score: 90.0,
+      composite_index: 82.2,
+      pass_audit: true,
+      critique_notes: "Passed threshold test.",
+    },
+    storyboard: [
+      {
+        beat_number: 1,
+        duration_seconds: 3.0,
+        visual_description: "Fast montage of student athletes studying and running.",
+        audio_voiceover: "We gave 50 college athletes this smart band for finals week.",
+        on_screen_text: "50 Athletes Tested",
+      },
+    ],
+  },
+];
+
+export function ExperimentLabHUD({
+  briefPayload,
+  variants = defaultVariants,
+  onVariantUpdated,
+}: ExperimentLabHUDProps) {
+  const activeVariants = variants && variants.length > 0 ? variants : defaultVariants;
+
+  const [selectedVariant, setSelectedVariant] = useState<any>(activeVariants[1]);
+  const [rerunningNodeId, setRerunningNodeId] = useState<string | null>(null);
+  const [overridePrompts, setOverridePrompts] = useState<{ [key: string]: string }>({});
+  const [showJsonModal, setShowJsonModal] = useState(false);
+
+  // Find top pick variant
+  const topPick = activeVariants.reduce(
+    (max, v) => (v.evaluation?.composite_index > max.evaluation?.composite_index ? v : max),
+    activeVariants[0]
+  );
+
+  const handleRerunNode = async (variant: any) => {
+    const nodeId =
+      variant.angle_archetype === "pain_agitation"
+        ? "node_hook_branch_a"
+        : variant.angle_archetype === "value_inversion"
+        ? "node_hook_branch_b"
+        : "node_hook_branch_c";
+
+    setRerunningNodeId(nodeId);
+
+    const payload: BrandBriefPayloadClient = briefPayload || {
+      project_id: "demo-proj",
+      product_name: "AuraPulse Watch",
+      raw_brief_text: "Affordable recovery smartwatch for collegiate athletes.",
+      target_platform: "instagram_reels",
+      forbidden_terms: ["cheap"],
+    };
+
+    try {
+      const res = await rerunNodeApi(
+        nodeId,
+        payload,
+        variant.angle_archetype,
+        overridePrompts[variant.variant_id]
+      );
+
+      if (onVariantUpdated) {
+        onVariantUpdated(res.variant);
+      }
+      setSelectedVariant(res.variant);
+    } catch (err: any) {
+      alert(`Rerun failed: ${err.message}`);
+    } finally {
+      setRerunningNodeId(null);
+    }
+  };
+
+  // Build downstream execution JSON payload matching Page 7 spec
+  const downstreamPayload = {
+    variant_reference: selectedVariant.variant_id,
+    aspect_ratio: "9:16",
+    total_duration: selectedVariant.storyboard
+      ? selectedVariant.storyboard.reduce((sum: number, b: any) => sum + (b.duration_seconds || 3.0), 0)
+      : 15.0,
+    scene_manifest: (selectedVariant.storyboard || []).map((beat: any) => ({
+      beat_number: beat.beat_number,
+      timestamp_range: [
+        0.0,
+        beat.duration_seconds || 3.0,
+      ],
+      camera_prompt: beat.visual_description,
+      voiceover_text: beat.audio_voiceover,
+      on_screen_text: beat.on_screen_text,
+    })),
+  };
+
   return (
     <aside className="w-[380px] shrink-0 border-l border-studio-border bg-studio-card/90 flex flex-col h-full overflow-hidden z-20">
       {/* HUD Header */}
@@ -14,103 +195,207 @@ export function ExperimentLabHUD() {
             Creative Experiment Lab
           </h2>
         </div>
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-          HUD 02
+        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/50">
+          SP-14 & SP-15 ACTIVE
         </span>
       </div>
 
       {/* Scorecard Content */}
       <div className="p-4 overflow-y-auto flex-1 space-y-4 text-xs">
-        {/* Metric Overview Cards */}
+        {/* Overview Metric Summary */}
         <div className="grid grid-cols-2 gap-2 font-mono">
           <div className="p-2.5 rounded bg-slate-950 border border-slate-800">
-            <div className="text-[10px] text-slate-500 uppercase">Top Score</div>
-            <div className="text-base font-bold text-emerald-400">91.8 <span className="text-[10px] text-slate-500">/ 100</span></div>
+            <div className="text-[10px] text-slate-500 uppercase">Top Composite Score</div>
+            <div className="text-base font-bold text-emerald-400 flex items-center space-x-1">
+              <span>{topPick?.evaluation?.composite_index?.toFixed(1) || "91.8"}</span>
+              <span className="text-[10px] text-slate-500">/ 100</span>
+            </div>
           </div>
           <div className="p-2.5 rounded bg-slate-950 border border-slate-800">
-            <div className="text-[10px] text-slate-500 uppercase">Generated</div>
-            <div className="text-base font-bold text-indigo-400">3 Variants</div>
+            <div className="text-[10px] text-slate-500 uppercase">Audit Status</div>
+            <div className="text-base font-bold text-indigo-400 flex items-center space-x-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-xs">3/3 Passed</span>
+            </div>
           </div>
         </div>
 
-        {/* Variant Cards List */}
+        {/* Variant Scorecards List */}
         <div className="space-y-3">
           <h3 className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider">
-            Variant Candidates
+            Variant Candidates Matrix
           </h3>
 
-          {/* Variant A */}
-          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold font-mono text-slate-200">Variant A: Pain Agitation</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/50 flex items-center space-x-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>84.6</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 italic">
-              "Why your current fitness watch is lying about your REM recovery."
-            </p>
-          </div>
+          {activeVariants.map((v) => {
+            const isTop = v.variant_id === topPick?.variant_id;
+            const isSelected = v.variant_id === selectedVariant?.variant_id;
+            const score = v.evaluation?.composite_index || 80.0;
+            const isPassing = score >= 80.0;
+            const isRerunning = rerunningNodeId?.includes(v.angle_archetype?.slice(0, 4));
 
-          {/* Variant B (Selected Top Pick) */}
-          <div className="p-3 rounded-lg bg-slate-950 border-2 border-indigo-500/80 space-y-2 relative shadow-lg shadow-indigo-500/10">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold font-mono text-indigo-300 flex items-center space-x-1.5">
-                <span>Variant B: Value Inversion</span>
-                <span className="text-[9px] font-mono uppercase bg-indigo-500 text-white px-1.5 py-0.2 rounded font-bold">Top Pick</span>
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/50 flex items-center space-x-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>91.8</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-200 italic font-medium">
-              "You don't need a $400 watch to run a sub-20 minute 5K."
-            </p>
+            return (
+              <div
+                key={v.variant_id}
+                onClick={() => setSelectedVariant(v)}
+                className={`p-3 rounded-lg bg-slate-950 border transition-all cursor-pointer space-y-2 ${
+                  isSelected
+                    ? "border-indigo-500/90 shadow-lg shadow-indigo-500/10"
+                    : "border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-xs font-bold font-mono text-slate-200">
+                      {v.variant_id}
+                    </span>
+                    {isTop && (
+                      <span className="text-[9px] font-mono uppercase bg-indigo-600 text-white px-1.5 py-0.2 rounded font-bold">
+                        Top Pick
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded border flex items-center space-x-1 ${
+                      isPassing
+                        ? "bg-emerald-950 text-emerald-300 border-emerald-800/50"
+                        : "bg-amber-950 text-amber-300 border-amber-800/50"
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span>{score.toFixed(1)}</span>
+                  </span>
+                </div>
 
-            {/* Radar / Vector Breakdown */}
-            <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-400">
-              <div>Hook Velocity: <strong className="text-slate-200">94</strong></div>
-              <div>Novelty Score: <strong className="text-slate-200">88</strong></div>
-              <div>Clarity Score: <strong className="text-slate-200">93</strong></div>
-              <div>Brand Alignment: <strong className="text-slate-200">92</strong></div>
-            </div>
-          </div>
+                <p className="text-[11px] text-slate-200 italic font-medium leading-snug">
+                  "{v.headline_hook}"
+                </p>
 
-          {/* Variant C */}
-          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold font-mono text-slate-200">Variant C: Social Proof</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800/50 flex items-center space-x-1">
-                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                <span>78.2</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 italic">
-              "We gave 50 college athletes this smart band for finals week."
-            </p>
-          </div>
+                {/* Metric Gauges Bar */}
+                <div className="pt-2 border-t border-slate-800/80 space-y-1 text-[10px] font-mono">
+                  <div className="flex justify-between text-slate-400 text-[9px]">
+                    <span>Hook Velocity: {v.evaluation?.hook_velocity_score || 90}</span>
+                    <span>Novelty: {v.evaluation?.novelty_score || 85}</span>
+                    <span>Clarity: {v.evaluation?.clarity_score || 90}</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden flex">
+                    <div
+                      className="bg-indigo-500 h-full"
+                      style={{ width: `${v.evaluation?.hook_velocity_score || 90}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Selective Rerun Controls */}
+                <div className="pt-1.5 flex items-center justify-between">
+                  <span className="text-[9px] font-mono text-slate-500">
+                    Archetype: {v.angle_archetype}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRerunNode(v);
+                    }}
+                    disabled={isRerunning}
+                    className="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-indigo-300 flex items-center space-x-1 transition-colors"
+                  >
+                    {isRerunning ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <RotateCw className="w-3 h-3 text-indigo-400" />
+                    )}
+                    <span>Rerun Node (SP-15)</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
+
+        {/* Deep Diagnostic Card for Selected Variant */}
+        {selectedVariant && (
+          <div className="p-3.5 rounded-lg bg-slate-950 border border-slate-800 space-y-3 font-sans">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono flex items-center space-x-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Deep Storyboard Diagnostic</span>
+              </span>
+              <span className="text-[10px] font-mono text-indigo-300">
+                {selectedVariant.variant_id}
+              </span>
+            </div>
+
+            {/* Beat Timeline list */}
+            <div className="space-y-2">
+              {(selectedVariant.storyboard || []).map((beat: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] space-y-1"
+                >
+                  <div className="flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span className="text-indigo-400 font-bold">
+                      Beat #{beat.beat_number} ({beat.duration_seconds}s)
+                    </span>
+                    <span className="text-slate-500">OST Caption</span>
+                  </div>
+                  <p className="text-slate-200 font-medium">"{beat.audio_voiceover}"</p>
+                  <p className="text-[10px] text-slate-400 italic">
+                    Visual: {beat.visual_description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Bar */}
       <div className="p-3 border-t border-studio-border bg-slate-900/80 flex items-center space-x-2">
         <button
-          disabled
-          className="flex-1 py-2 px-3 rounded bg-slate-800 text-slate-400 text-xs font-mono flex items-center justify-center space-x-1 opacity-60 cursor-not-allowed"
+          onClick={() => setShowJsonModal(true)}
+          className="flex-1 py-2 px-3 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-medium flex items-center justify-center space-x-1.5 transition-colors shadow-lg shadow-indigo-600/20"
         >
-          <RotateCw className="w-3 h-3" />
-          <span>Single Node Rerun</span>
-        </button>
-        <button
-          disabled
-          className="py-2 px-3 rounded bg-indigo-600/50 text-indigo-200 text-xs font-mono flex items-center justify-center space-x-1 opacity-60 cursor-not-allowed"
-        >
-          <span>Dispatch</span>
-          <ArrowRight className="w-3 h-3" />
+          <FileCode className="w-3.5 h-3.5" />
+          <span>Export Downstream JSON</span>
         </button>
       </div>
+
+      {/* Downstream JSON Export Payload Modal */}
+      {showJsonModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-studio-card border border-studio-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-studio-border bg-slate-900/80 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Film className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono">
+                  Downstream Video Engine Generation Manifest
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowJsonModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto font-mono text-xs text-indigo-300 bg-slate-950 flex-1">
+              <pre className="whitespace-pre-wrap">
+                {JSON.stringify(downstreamPayload, null, 2)}
+              </pre>
+            </div>
+
+            <div className="p-3 border-t border-studio-border bg-slate-900/80 flex justify-end">
+              <button
+                onClick={() => setShowJsonModal(false)}
+                className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono"
+              >
+                Close Manifest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

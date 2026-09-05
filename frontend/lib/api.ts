@@ -33,6 +33,13 @@ export interface GraphExecutionResponse {
   total_duration_ms: number;
 }
 
+export interface NodeRerunResponse {
+  node_id: string;
+  variant: any;
+  status: string;
+  recomputation_latency_ms: number;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
@@ -76,7 +83,7 @@ export async function compileGraphApi(payload: BrandBriefPayloadClient): Promise
 }
 
 /**
- * Executes multi-agent strategy pipeline (Strategist -> 3 Parallel Hook Generators).
+ * Executes multi-agent strategy pipeline (Strategist -> 3 Parallel Hook Generators -> Critic).
  */
 export async function executeGraphApi(payload: BrandBriefPayloadClient): Promise<GraphExecutionResponse> {
   const response = await fetch(`${API_BASE_URL}/api/v1/graphs/execute`, {
@@ -90,6 +97,35 @@ export async function executeGraphApi(payload: BrandBriefPayloadClient): Promise
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to execute agent graph (${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Reruns single target branch node without resetting upstream Strategy state.
+ */
+export async function rerunNodeApi(
+  nodeId: string,
+  brief: BrandBriefPayloadClient,
+  archetype: string,
+  overridePrompt?: string
+): Promise<NodeRerunResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/nodes/${nodeId}/rerun`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      brief,
+      archetype,
+      override_prompt: overridePrompt,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to rerun node ${nodeId} (${response.status})`);
   }
 
   return response.json();
