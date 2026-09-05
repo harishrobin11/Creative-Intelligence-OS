@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import List, Dict, Any
 from fastapi import APIRouter, status, HTTPException
@@ -7,9 +8,11 @@ from app.schemas.contracts import (
     BrandBriefPayload,
     StrategistOutput,
     CreativeAngleVariant,
+    EvaluationVector,
 )
 from app.agents.strategist import run_strategist_agent
 from app.agents.hook_generator import run_all_hook_branches_parallel
+from app.agents.critic import evaluate_and_refine
 
 router = APIRouter()
 
@@ -37,7 +40,6 @@ class GraphExecutionResponse(BaseModel):
 async def compile_graph(payload: BrandBriefPayload):
     graph_id = f"graph-{payload.project_id}-{int(time.time())}"
 
-    # Build node manifests matching spec requirements
     nodes = [
         {
             "id": "node_brief_01",
@@ -95,7 +97,7 @@ async def compile_graph(payload: BrandBriefPayload):
     "/graphs/execute",
     response_model=GraphExecutionResponse,
     status_code=status.HTTP_200_OK,
-    summary="Execute multi-agent strategy pipeline (Strategist -> 3 Parallel Hook Generators)",
+    summary="Execute multi-agent strategy pipeline with Brand Critic self-correction reflection loop",
 )
 async def execute_graph(payload: BrandBriefPayload):
     start_time = time.time()
@@ -106,7 +108,16 @@ async def execute_graph(payload: BrandBriefPayload):
         strategy = await run_strategist_agent(payload)
 
         # Tier 2: Parallel Hook Generators (3 branches concurrently)
-        variants = await run_all_hook_branches_parallel(payload, strategy)
+        initial_variants = await run_all_hook_branches_parallel(payload, strategy)
+
+        # Tier 3: Brand Critic Reflection Loop (evaluate and refine each branch concurrently)
+        refinement_tasks = [
+            evaluate_and_refine(variant, payload, strategy, max_retries=2)
+            for variant in initial_variants
+        ]
+
+        evaluated_pairs = await asyncio.gather(*refinement_tasks)
+        evaluated_variants = [pair[0] for pair in evaluated_pairs]
 
         duration_ms = int((time.time() - start_time) * 1000)
 
@@ -114,7 +125,7 @@ async def execute_graph(payload: BrandBriefPayload):
             graph_id=graph_id,
             brief=payload,
             strategy=strategy,
-            variants=variants,
+            variants=evaluated_variants,
             total_duration_ms=duration_ms,
         )
     except Exception as exc:
