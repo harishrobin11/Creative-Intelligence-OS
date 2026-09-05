@@ -70,6 +70,7 @@ export function StudioWorkspace() {
         <IngestionHUD onCompileGraph={handleCompileGraph} />
         <DAGCanvas
           compiledBriefPayload={compiledPayload}
+          variants={variants}
           onSelectVariant={handleSelectVariant}
           onOpenStoryboardModal={handleOpenStoryboardModal}
         />
@@ -79,6 +80,7 @@ export function StudioWorkspace() {
           selectedVariantId={selectedVariantId}
           onSelectVariant={handleSelectVariant}
           showStoryboardModal={showStoryboardModal}
+          onOpenStoryboardModal={handleOpenStoryboardModal}
           onCloseStoryboardModal={handleCloseStoryboardModal}
           onVariantUpdated={handleVariantUpdated}
         />

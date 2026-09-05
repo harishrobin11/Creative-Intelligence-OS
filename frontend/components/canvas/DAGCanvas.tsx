@@ -20,6 +20,7 @@ import { LayoutGrid, Code } from "lucide-react";
 
 interface DAGCanvasProps {
   compiledBriefPayload?: BrandBriefPayloadClient | null;
+  variants?: any[];
   onSelectVariant?: (variantId: string) => void;
   onOpenStoryboardModal?: (variantId: string) => void;
 }
@@ -158,6 +159,7 @@ const defaultInitialEdges: Edge[] = [
 
 export function DAGCanvas({
   compiledBriefPayload,
+  variants = [],
   onSelectVariant,
   onOpenStoryboardModal,
 }: DAGCanvasProps) {
@@ -180,6 +182,19 @@ export function DAGCanvas({
   );
 
   useEffect(() => {
+    const findVariant = (archetype: string, fallbackIdx: number) => {
+      if (variants && variants.length > 0) {
+        const found = variants.find((v) => v.angle_archetype === archetype);
+        if (found) return found;
+        if (variants[fallbackIdx]) return variants[fallbackIdx];
+      }
+      return null;
+    };
+
+    const varA = findVariant("pain_agitation", 0);
+    const varB = findVariant("value_inversion", 1);
+    const varC = findVariant("social_proof", 2);
+
     const rawNodes = compiledBriefPayload
       ? [
           {
@@ -216,12 +231,12 @@ export function DAGCanvas({
             type: "angleBranchNode",
             position: { x: 0, y: 0 },
             data: {
-              variant_id: "VAR-A-PAIN-001",
+              variant_id: varA?.variant_id || "VAR-A-PAIN-001",
               archetype: "pain_agitation",
-              headline_hook: `Why ${compiledBriefPayload.product_name} changes the status quo.`,
-              narrative_thesis: "Problem agitation strategy branch.",
-              beats_count: 4,
-              score: 86.0,
+              headline_hook: varA?.headline_hook || `Why ${compiledBriefPayload.product_name} changes the status quo.`,
+              narrative_thesis: varA?.narrative_thesis || "Problem agitation strategy branch.",
+              beats_count: varA?.storyboard?.length || 4,
+              score: varA?.evaluation?.composite_index || 86.0,
               onSelectVariant,
               onOpenStoryboardModal,
             },
@@ -232,12 +247,12 @@ export function DAGCanvas({
             type: "angleBranchNode",
             position: { x: 0, y: 0 },
             data: {
-              variant_id: "VAR-B-VALUE-INVERT-002",
+              variant_id: varB?.variant_id || "VAR-B-VALUE-INVERT-002",
               archetype: "value_inversion",
-              headline_hook: `Stop overpaying for alternatives. Choose ${compiledBriefPayload.product_name}.`,
-              narrative_thesis: "Value inversion strategy branch.",
-              beats_count: 4,
-              score: 92.5,
+              headline_hook: varB?.headline_hook || `Stop overpaying for alternatives. Choose ${compiledBriefPayload.product_name}.`,
+              narrative_thesis: varB?.narrative_thesis || "Value inversion strategy branch.",
+              beats_count: varB?.storyboard?.length || 4,
+              score: varB?.evaluation?.composite_index || 92.5,
               onSelectVariant,
               onOpenStoryboardModal,
             },
@@ -248,12 +263,12 @@ export function DAGCanvas({
             type: "angleBranchNode",
             position: { x: 0, y: 0 },
             data: {
-              variant_id: "VAR-C-SOCIAL-003",
+              variant_id: varC?.variant_id || "VAR-C-SOCIAL-003",
               archetype: "social_proof",
-              headline_hook: `See how users react to ${compiledBriefPayload.product_name}.`,
-              narrative_thesis: "Social proof strategy branch.",
-              beats_count: 4,
-              score: 79.0,
+              headline_hook: varC?.headline_hook || `See how users react to ${compiledBriefPayload.product_name}.`,
+              narrative_thesis: varC?.narrative_thesis || "Social proof strategy branch.",
+              beats_count: varC?.storyboard?.length || 4,
+              score: varC?.evaluation?.composite_index || 79.0,
               onSelectVariant,
               onOpenStoryboardModal,
             },
@@ -264,14 +279,13 @@ export function DAGCanvas({
             type: "brandCriticNode",
             position: { x: 0, y: 0 },
             data: {
-              novelty_score: 90.0,
-              clarity_score: 94.0,
-              hook_velocity_score: 95.0,
-              brand_alignment_score: 92.0,
-              composite_index: 92.5,
+              novelty_score: varB?.evaluation?.novelty_score || 90.0,
+              clarity_score: varB?.evaluation?.clarity_score || 94.0,
+              hook_velocity_score: varB?.evaluation?.hook_velocity_score || 95.0,
+              brand_alignment_score: varB?.evaluation?.brand_alignment_score || 92.0,
+              composite_index: varB?.evaluation?.composite_index || 92.5,
               pass_audit: true,
-              critique_notes:
-                "Passed brand evaluation. Compliant with forbidden terms.",
+              critique_notes: varB?.evaluation?.critique_notes || "Passed brand evaluation. Compliant with forbidden terms.",
             },
             style: { width: 290, height: 180 },
           },
@@ -290,7 +304,7 @@ export function DAGCanvas({
         );
 
     onLayout(rawNodes, defaultInitialEdges);
-  }, [compiledBriefPayload, onLayout, onSelectVariant, onOpenStoryboardModal]);
+  }, [compiledBriefPayload, variants, onLayout, onSelectVariant, onOpenStoryboardModal]);
 
   const handleNodeClick = (_: React.MouseEvent, node: Node) => {
     setSelectedInspectNode(node);

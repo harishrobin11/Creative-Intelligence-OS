@@ -13,6 +13,10 @@ import {
   Loader2,
   Film,
   Eye,
+  Edit3,
+  Copy,
+  Check,
+  Download,
 } from "lucide-react";
 import { rerunNodeApi, BrandBriefPayloadClient } from "@/lib/api";
 
@@ -23,6 +27,7 @@ interface ExperimentLabHUDProps {
   onSelectVariant?: (variantId: string) => void;
   onVariantUpdated?: (updatedVariant: any) => void;
   showStoryboardModal?: boolean;
+  onOpenStoryboardModal?: (variantId: string) => void;
   onCloseStoryboardModal?: () => void;
 }
 
@@ -157,20 +162,27 @@ export function ExperimentLabHUD({
   onSelectVariant,
   onVariantUpdated,
   showStoryboardModal: externalShowModal,
+  onOpenStoryboardModal,
   onCloseStoryboardModal,
 }: ExperimentLabHUDProps) {
   const activeVariants = variants && variants.length > 0 ? variants : defaultVariants;
 
-  const [selectedVariant, setSelectedVariant] = useState<any>(activeVariants[1]);
+  const [selectedVariant, setSelectedVariant] = useState<any>(activeVariants[0]);
   const [rerunningNodeId, setRerunningNodeId] = useState<string | null>(null);
   const [overridePrompts, setOverridePrompts] = useState<{ [key: string]: string }>({});
+  const [editingPromptVariantId, setEditingPromptVariantId] = useState<string | null>(null);
   const [showJsonModal, setShowJsonModal] = useState(false);
   const [internalShowModal, setInternalShowModal] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
 
-  const isModalOpen = externalShowModal !== undefined ? externalShowModal : internalShowModal;
+  const isModalOpen = Boolean(externalShowModal || internalShowModal);
 
-  const openStoryboardModal = () => {
+  const openStoryboardModal = (variantId?: string) => {
     setInternalShowModal(true);
+    const targetId = variantId || selectedVariant?.variant_id;
+    if (targetId && onOpenStoryboardModal) {
+      onOpenStoryboardModal(targetId);
+    }
   };
 
   const closeStoryboardModal = () => {
@@ -180,19 +192,21 @@ export function ExperimentLabHUD({
     }
   };
 
-  // Sync external selectedVariantId prop
+  // Sync external selectedVariantId prop or keep selectedVariant valid
   useEffect(() => {
     if (selectedVariantId) {
       const match = activeVariants.find((v) => v.variant_id === selectedVariantId);
       if (match) {
         setSelectedVariant(match);
       }
+    } else if (activeVariants.length > 0 && !activeVariants.some(v => v.variant_id === selectedVariant?.variant_id)) {
+      setSelectedVariant(activeVariants[0]);
     }
-  }, [selectedVariantId, activeVariants]);
+  }, [selectedVariantId, activeVariants, selectedVariant]);
 
   // Find top pick variant
   const topPick = activeVariants.reduce(
-    (max, v) => (v.evaluation?.composite_index > max.evaluation?.composite_index ? v : max),
+    (max, v) => ((v.evaluation?.composite_index || 0) > (max.evaluation?.composite_index || 0) ? v : max),
     activeVariants[0]
   );
 
@@ -203,13 +217,16 @@ export function ExperimentLabHUD({
     }
   };
 
+  const getNodeForVariant = (variant: any) => {
+    if (variant.node_id) return variant.node_id;
+    if (variant.angle_archetype === "pain_agitation") return "node_hook_branch_a";
+    if (variant.angle_archetype === "value_inversion") return "node_hook_branch_b";
+    if (variant.angle_archetype === "social_proof") return "node_hook_branch_c";
+    return "node_hook_branch_b";
+  };
+
   const handleRerunNode = async (variant: any) => {
-    const nodeId =
-      variant.angle_archetype === "pain_agitation"
-        ? "node_hook_branch_a"
-        : variant.angle_archetype === "value_inversion"
-        ? "node_hook_branch_b"
-        : "node_hook_branch_c";
+    const nodeId = getNodeForVariant(variant);
 
     setRerunningNodeId(nodeId);
 
@@ -242,12 +259,12 @@ export function ExperimentLabHUD({
 
   // Build downstream execution JSON payload
   const downstreamPayload = {
-    variant_reference: selectedVariant.variant_id,
+    variant_reference: selectedVariant?.variant_id || "VAR-A-001",
     aspect_ratio: "9:16",
-    total_duration: selectedVariant.storyboard
+    total_duration: selectedVariant?.storyboard
       ? selectedVariant.storyboard.reduce((sum: number, b: any) => sum + (b.duration_seconds || 3.0), 0)
       : 15.0,
-    scene_manifest: (selectedVariant.storyboard || []).map((beat: any) => ({
+    scene_manifest: (selectedVariant?.storyboard || []).map((beat: any) => ({
       beat_number: beat.beat_number,
       timestamp_range: [
         0.0,
@@ -257,6 +274,22 @@ export function ExperimentLabHUD({
       voiceover_text: beat.audio_voiceover,
       on_screen_text: beat.on_screen_text,
     })),
+  };
+
+  const handleCopyManifest = () => {
+    navigator.clipboard.writeText(JSON.stringify(downstreamPayload, null, 2));
+    setCopiedJson(true);
+    setTimeout(() => setCopiedJson(false), 2000);
+  };
+
+  const handleDownloadManifest = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(downstreamPayload, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `manifest-${selectedVariant?.variant_id || "downstream"}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   return (
@@ -289,7 +322,7 @@ export function ExperimentLabHUD({
             <div className="text-[10px] text-slate-500 uppercase">Audit Status</div>
             <div className="text-base font-bold text-indigo-400 flex items-center space-x-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="text-xs">3/3 Passed</span>
+              <span className="text-xs">{activeVariants.length}/{activeVariants.length} Passed</span>
             </div>
           </div>
         </div>
@@ -305,7 +338,9 @@ export function ExperimentLabHUD({
             const isSelected = v.variant_id === selectedVariant?.variant_id;
             const score = v.evaluation?.composite_index || 80.0;
             const isPassing = score >= 80.0;
-            const isRerunning = rerunningNodeId?.includes(v.angle_archetype?.slice(0, 4));
+            const targetNodeId = getNodeForVariant(v);
+            const isRerunning = rerunningNodeId === targetNodeId;
+            const isPromptEditing = editingPromptVariantId === v.variant_id;
 
             return (
               <div
@@ -359,14 +394,38 @@ export function ExperimentLabHUD({
                   </div>
                 </div>
 
-                {/* Action Buttons: View Storyboard & Rerun Node */}
-                <div className="pt-2 flex items-center justify-between space-x-2">
+                {/* Optional Custom Prompt Override Input Box */}
+                {isPromptEditing && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="pt-2 border-t border-slate-800/80 space-y-1 text-[11px]"
+                  >
+                    <label className="text-[10px] font-mono text-indigo-300 block font-medium">
+                      Custom Hook Override Prompt:
+                    </label>
+                    <input
+                      type="text"
+                      value={overridePrompts[v.variant_id] || ""}
+                      onChange={(e) =>
+                        setOverridePrompts({
+                          ...overridePrompts,
+                          [v.variant_id]: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Focus on battery life & zero subscription fees..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                )}
+
+                {/* Action Buttons: View Storyboard, Prompt Override & Rerun Node */}
+                <div className="pt-2 flex items-center justify-between space-x-1.5">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSelectVariant(v);
-                      openStoryboardModal();
+                      openStoryboardModal(v.variant_id);
                     }}
                     className="flex-1 py-1.5 px-2 rounded bg-indigo-950 hover:bg-indigo-900 border border-indigo-800/60 text-indigo-200 font-mono text-[10px] flex items-center justify-center space-x-1 transition-colors"
                   >
@@ -378,13 +437,29 @@ export function ExperimentLabHUD({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      setEditingPromptVariantId(isPromptEditing ? null : v.variant_id);
+                    }}
+                    className={`py-1.5 px-2 rounded border text-[10px] font-mono transition-colors ${
+                      isPromptEditing || overridePrompts[v.variant_id]
+                        ? "bg-indigo-900 border-indigo-600 text-indigo-200"
+                        : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400"
+                    }`}
+                    title="Toggle Custom Prompt Override"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       handleRerunNode(v);
                     }}
                     disabled={isRerunning}
-                    className="py-1.5 px-2.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-slate-300 flex items-center space-x-1 transition-colors"
+                    className="py-1.5 px-2.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-slate-300 flex items-center space-x-1 transition-colors disabled:opacity-50"
                   >
                     {isRerunning ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
                     ) : (
                       <RotateCw className="w-3 h-3 text-indigo-400" />
                     )}
@@ -405,7 +480,7 @@ export function ExperimentLabHUD({
                 <span>Deep Storyboard Diagnostic</span>
               </span>
               <button
-                onClick={openStoryboardModal}
+                onClick={() => openStoryboardModal(selectedVariant.variant_id)}
                 className="text-[10px] font-mono text-indigo-400 hover:underline flex items-center space-x-1"
               >
                 <Eye className="w-3 h-3" />
@@ -418,7 +493,7 @@ export function ExperimentLabHUD({
               {(selectedVariant.storyboard || []).map((beat: any, idx: number) => (
                 <div
                   key={idx}
-                  onClick={openStoryboardModal}
+                  onClick={() => openStoryboardModal(selectedVariant.variant_id)}
                   className="p-2.5 rounded bg-slate-900 border border-slate-800 hover:border-indigo-500/50 cursor-pointer text-[11px] space-y-1 transition-colors"
                 >
                   <div className="flex items-center justify-between font-mono text-[10px] text-slate-400">
@@ -593,7 +668,33 @@ export function ExperimentLabHUD({
               </pre>
             </div>
 
-            <div className="p-3 border-t border-studio-border bg-slate-900/80 flex justify-end">
+            <div className="p-3 border-t border-studio-border bg-slate-900/80 flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleCopyManifest}
+                  className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center space-x-1.5 transition-colors"
+                >
+                  {copiedJson ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Copy JSON</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleDownloadManifest}
+                  className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center space-x-1.5 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Download Manifest</span>
+                </button>
+              </div>
+
               <button
                 onClick={() => setShowJsonModal(false)}
                 className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono"
