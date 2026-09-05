@@ -19,6 +19,20 @@ export interface BrandBriefPayloadClient {
   forbidden_terms: string[];
 }
 
+export interface GraphTopologyResponse {
+  graph_id: string;
+  nodes: any[];
+  edges: any[];
+}
+
+export interface GraphExecutionResponse {
+  graph_id: string;
+  brief: BrandBriefPayloadClient;
+  strategy: any;
+  variants: any[];
+  total_duration_ms: number;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
@@ -36,6 +50,46 @@ export async function extractUrlContent(url: string): Promise<URLExtractionRespo
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to extract URL content (${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Compiles brief payload into DAG computational topology.
+ */
+export async function compileGraphApi(payload: BrandBriefPayloadClient): Promise<GraphTopologyResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/graphs/compile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to compile graph topology (${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Executes multi-agent strategy pipeline (Strategist -> 3 Parallel Hook Generators).
+ */
+export async function executeGraphApi(payload: BrandBriefPayloadClient): Promise<GraphExecutionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/graphs/execute`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to execute agent graph (${response.status})`);
   }
 
   return response.json();
