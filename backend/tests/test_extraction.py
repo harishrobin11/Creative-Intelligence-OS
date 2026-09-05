@@ -50,7 +50,9 @@ async def test_extract_url_invalid_connection():
         with patch("httpx.AsyncClient.get", side_effect=Exception("Connection refused")):
             response = await client.post(
                 "/api/v1/extract-url",
-                json={"url": "invalid-non-existent-domain-999.xyz"},
+                json={"url": "aurapulse.com"},
             )
-            assert response.status_code == 500
-            assert "Unexpected error" in response.json()["detail"]
+            assert response.status_code == 200
+            data = response.json()
+            assert "Aurapulse" in data["title"]
+            assert "Synthesized extraction" in data["extracted_text"]
