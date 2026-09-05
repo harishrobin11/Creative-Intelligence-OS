@@ -5,6 +5,7 @@ import { Header } from "./Header";
 import { IngestionHUD } from "../hud/IngestionHUD";
 import { DAGCanvas } from "../canvas/DAGCanvas";
 import { ExperimentLabHUD } from "../hud/ExperimentLabHUD";
+import { TelemetryDrawer } from "../hud/TelemetryDrawer";
 import { BrandBriefPayloadClient, executeGraphApi } from "@/lib/api";
 
 export function StudioWorkspace() {
@@ -12,6 +13,7 @@ export function StudioWorkspace() {
     useState<BrandBriefPayloadClient | null>(null);
   const [variants, setVariants] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [totalDurationMs, setTotalDurationMs] = useState(4120);
 
   const handleCompileGraph = async (payload: BrandBriefPayloadClient) => {
     setCompiledPayload(payload);
@@ -22,6 +24,9 @@ export function StudioWorkspace() {
       const execRes = await executeGraphApi(payload);
       if (execRes.variants && execRes.variants.length > 0) {
         setVariants(execRes.variants);
+      }
+      if (execRes.total_duration_ms) {
+        setTotalDurationMs(execRes.total_duration_ms);
       }
     } catch (err: any) {
       console.warn("Backend API execution warning, using client generated graph flow:", err.message);
@@ -54,6 +59,7 @@ export function StudioWorkspace() {
           onVariantUpdated={handleVariantUpdated}
         />
       </div>
+      <TelemetryDrawer totalDurationMs={totalDurationMs} />
     </div>
   );
 }

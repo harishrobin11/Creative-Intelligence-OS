@@ -15,13 +15,13 @@ import {
 import { nodeTypes } from "./nodes";
 import { getLayoutedElements } from "@/lib/dagreLayout";
 import { BrandBriefPayloadClient } from "@/lib/api";
-import { LayoutGrid, RefreshCw, Layers } from "lucide-react";
+import { InspectModal } from "./InspectModal";
+import { LayoutGrid, Code } from "lucide-react";
 
 interface DAGCanvasProps {
   compiledBriefPayload?: BrandBriefPayloadClient | null;
 }
 
-// Initial demonstration nodes before user compiles custom brief
 const defaultInitialNodes: Node[] = [
   {
     id: "node_brief_01",
@@ -157,6 +157,7 @@ const defaultInitialEdges: Edge[] = [
 export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [selectedInspectNode, setSelectedInspectNode] = useState<Node | null>(null);
 
   // Calculate Dagre auto layout
   const onLayout = useCallback(
@@ -172,10 +173,8 @@ export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
     [setNodes, setEdges]
   );
 
-  // Initialize graph layout on mount or when compiled brief changes
   useEffect(() => {
     if (compiledBriefPayload) {
-      // Dynamic graph initialization from brief payload
       const dynamicNodes: Node[] = [
         {
           id: "node_brief_01",
@@ -272,12 +271,8 @@ export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
     }
   }, [compiledBriefPayload, onLayout]);
 
-  const handleResetLayout = () => {
-    if (compiledBriefPayload) {
-      onLayout(nodes, edges);
-    } else {
-      onLayout(defaultInitialNodes, defaultInitialEdges);
-    }
+  const handleNodeClick = (_: React.MouseEvent, node: Node) => {
+    setSelectedInspectNode(node);
   };
 
   return (
@@ -287,6 +282,7 @@ export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -311,22 +307,29 @@ export function DAGCanvas({ compiledBriefPayload }: DAGCanvasProps) {
         />
       </ReactFlow>
 
-      {/* Canvas Top Toolbar Controls */}
+      {/* Top Toolbar Controls */}
       <div className="absolute top-4 left-4 z-10 flex items-center space-x-2">
         <div className="px-3 py-1.5 rounded-lg bg-studio-card/90 border border-studio-border backdrop-blur-md flex items-center space-x-2 text-xs font-mono text-slate-300">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>DAG Engine: Dagre Top-to-Bottom Layout (SP-08)</span>
+          <span>DAG Engine: Click any node to Inspect Prompt/Payload (SP-17)</span>
         </div>
 
         <button
-          onClick={handleResetLayout}
+          onClick={() => onLayout(nodes, edges)}
           className="px-2.5 py-1.5 rounded-lg bg-studio-card/90 border border-studio-border hover:bg-slate-800 backdrop-blur-md text-xs font-mono text-slate-300 flex items-center space-x-1.5 transition-colors shadow-lg"
-          title="Recalculate Dagre graph positions"
         >
           <LayoutGrid className="w-3.5 h-3.5 text-indigo-400" />
           <span>Auto Layout</span>
         </button>
       </div>
+
+      {/* Inspect Modal */}
+      {selectedInspectNode && (
+        <InspectModal
+          node={selectedInspectNode}
+          onClose={() => setSelectedInspectNode(null)}
+        />
+      )}
     </main>
   );
 }
